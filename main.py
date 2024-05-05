@@ -6,7 +6,7 @@ import math
 
 pygame.init()
 
-def physics_engine(reset_event, Kg, scale):
+def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event):
     win = pygame.display.set_mode([500, 500])
     pygame.display.set_caption("Physics Engine Viewport")
 
@@ -25,7 +25,7 @@ def physics_engine(reset_event, Kg, scale):
             self.frames += 1
 
     class GameObject:
-        def __init__(self, window, scale, density, g, elasticity, pos):
+        def __init__(self, window, scale, density, g, elasticity, pos, roughness):
             self.win = window
             self.g = g
             self.scale = scale
@@ -39,6 +39,7 @@ def physics_engine(reset_event, Kg, scale):
             self.color = (0,0,255)
             self.is_selected = False
             self.grabbing = False
+            self.roughness = roughness
 
         def frame(self, timer, objs):
             pygame.draw.rect(self.win, self.color, (self.position[0] - self.scale / 2, self.position[1] - self.scale / 2, self.scale, self.scale))
@@ -61,9 +62,11 @@ def physics_engine(reset_event, Kg, scale):
             if self.position[1] > self.win.get_size()[1] - self.scale / 2:
                 self.position[1] = self.win.get_size()[1] - self.scale / 2
                 self.velocity[1] *= -1 * self.elasticity
+                self.velocity[0] -= self.velocity[0]*self.roughness
             if self.position[1] < 0 + self.scale / 2:
                 self.position[1] = 1 + self.scale / 2
                 self.velocity[1] *= -1 * self.elasticity
+                self.velocity[0] -= self.velocity[0]*self.roughness
 
             
             for obj in objs:
@@ -81,21 +84,23 @@ def physics_engine(reset_event, Kg, scale):
                 yTopCollision = thisUpperBound > otherLowerBound and thisUpperBound < otherUpperBound
                 yBottomCollision = thisLowerBound > otherLowerBound and thisLowerBound < otherUpperBound
 
-                yCenterCollision = self.position[1] > otherLowerBound and self.position[1] < otherUpperBound
+                yCenterCollision = self.position[1] > otherLowerBound-self.scale/2+1 and self.position[1] < otherUpperBound+self.scale/2-1
 
 
                 xLeftCollsion = thisLeftBound > otherLeftBound and thisLeftBound < otherRightBound
                 xRightCollision = thisRightBound > otherLeftBound and thisRightBound < otherRightBound
 
-                xCenterCollision = self.position[0] > otherLeftBound and self.position[0] < otherRightBound
+                xCenterCollision = self.position[0] > otherLeftBound - self.scale/2+1 and self.position[0] < otherRightBound + self.scale/2-1
 
-                if xCenterCollision or xLeftCollsion or xRightCollision:
+                if xCenterCollision:
                     if yTopCollision:
                         self.velocity[1] *= -1 * self.elasticity
                         self.position[1] = obj.position[1] - obj.scale/2 - self.scale/2
+                        self.velocity[0] -= self.velocity[0]*self.roughness
                     if yBottomCollision:
                         self.velocity[1] *= -1 * self.elasticity
                         self.position[1] = obj.position[1] + obj.scale/2 + self.scale/2
+                        self.velocity[0] -= self.velocity[0]*self.roughness
                 if yCenterCollision:
                     if xLeftCollsion:
                         self.velocity[0] *= -1 * self.elasticity
@@ -135,13 +140,17 @@ def physics_engine(reset_event, Kg, scale):
 
     scales = [25, 25]
     positions = [[0,0], [100,0]]
+    roughnesses = [0.1, 0.1]
+    elasticities = [0.7, 0.7]
     scene_objects = []
-    scene_objects.append(GameObject(win, scales[0], 1, Kg.value, 0.7, positions[0]))
-    scene_objects.append(GameObject(win, scales[1], 1, Kg.value, 0.7, positions[1]))
+    scene_objects.append(GameObject(win, scales[0], 1, Kg.value, elasticities[0], positions[0], roughnesses[0]))
+    scene_objects.append(GameObject(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
     timer = Timer()
     running = True
 
     last_frame_scale_slider = 0
+    last_frame_elasticity_slider = 0
+    last_frame_roughness_slider = 0
 
     while running:
         for event in pygame.event.get():
@@ -159,29 +168,69 @@ def physics_engine(reset_event, Kg, scale):
         if reset_event.value == True:
             print("Resetting Scene")
             for obj in scene_objects:
-                scene_objects[scene_objects.index(obj)] = GameObject(win, scales[scene_objects.index(obj)], 1, Kg.value, 0.7, positions[scene_objects.index(obj)])
+                scene_objects[scene_objects.index(obj)] = GameObject(win, scales[scene_objects.index(obj)], 1, Kg.value, elasticities[scene_objects.index(obj)], positions[scene_objects.index(obj)], roughnesses[scene_objects.index(obj)])
             reset_event.value = False
+
+        if spawn_event.value == True:
+            print("Spawning Object")
+            scales.append(50)
+            positions.append([0,0])
+            roughnesses.append(0.1)
+            elasticities.append(0.7)
+            scene_objects.append(GameObject(win, scales[len(scene_objects)], 1, Kg.value, elasticities[len(scene_objects)], positions[len(scene_objects)], roughnesses[len(scene_objects)]))
+            spawn_event.value = False
+
+        if reset_objs_event.value == True:
+            print("De-Spawning All Objects")
+            scales = []
+            positions = []
+            roughnesses = []
+            elasticities = []
+            scene_objects = []
+            reset_objs_event.value = False
 
         if (scale.value != last_frame_scale_slider):
             for obj in scene_objects:
                 if obj.is_selected:
                     scales[scene_objects.index(obj)] = scale.value
+        if (elasticity.value != last_frame_elasticity_slider):
+            for obj in scene_objects:
+                if obj.is_selected:
+                    elasticities[scene_objects.index(obj)] = elasticity.value
+        if (roughness.value != last_frame_roughness_slider):
+            for obj in scene_objects:
+                if obj.is_selected:
+                    roughnesses[scene_objects.index(obj)] = roughness.value
 
         last_frame_scale_slider = scale.value
+        last_frame_elasticity_slider = elasticity.value
+        last_frame_roughness_slider = roughness.value
 
         #time.sleep(0.1)
 
     pygame.quit()
 
-def settings_ui(reset_event,Kg,scale):
+def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event):
     def reset():
         reset_event.value = True
+    
+    def spawn():
+        spawn_event.value = True
+
+    def removeall():
+        reset_objs_event.value = True
 
     def on_g_change(value):
         Kg.value = float(value)
 
     def on_scale_change(value):
         scale.value = float(value)
+
+    def on_elasticity_change(value):
+        elasticity.value = float(value)
+
+    def on_roughness_change(value):
+        roughness.value = float(value)
 
     win = tk.Tk()
     win.title("Physics Engine Settings")
@@ -199,6 +248,24 @@ def settings_ui(reset_event,Kg,scale):
     scale_slider = tk.Scale(win, from_=25, to=200, orient="horizontal", command=on_scale_change)
     scale_slider.pack()
 
+    elasticity_label = tk.Label(text="Object Elasticity:")
+    elasticity_label.pack()
+
+    elasticity_slider = tk.Scale(win, from_=0, to=2, orient="horizontal", command=on_elasticity_change, resolution=0.1)
+    elasticity_slider.pack()
+
+    roughness_label = tk.Label(text="Object Roughness:")
+    roughness_label.pack()
+
+    roughness_slider = tk.Scale(win, from_=0, to=1, orient="horizontal", command=on_roughness_change, resolution=0.1)
+    roughness_slider.pack()
+
+    spawnButton = tk.Button(text="Spawn Object", command=spawn)
+    spawnButton.pack()
+
+    delButton = tk.Button(text="Remove All Objects", command=removeall)
+    delButton.pack()
+
     resetButton = tk.Button(text="Reset", command=reset)
     resetButton.pack()
 
@@ -206,9 +273,13 @@ def settings_ui(reset_event,Kg,scale):
 
 if __name__ == "__main__":
     reset_event = mp.Value('b', False)
+    spawn_event = mp.Value('b', False)
+    reset_objs_event = mp.Value('b', False)
     Kg = mp.Value('f', 98.1)
     scale = mp.Value('f', 100)
-    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,))
-    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,))
+    elasticity = mp.Value('f', 0.7)
+    roughness = mp.Value('f', 0.2)
+    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event))
+    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event))
     engine_process.start()
     ui_process.start()
