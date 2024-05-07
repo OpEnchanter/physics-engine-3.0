@@ -125,7 +125,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                     if yTopCollision:
                         transferredEnergy = self.scale/obj.scale * self.velocity[1] * (1-self.elasticity)
                         obj.velocity[1] += transferredEnergy
-                        self.velocity[1] = -1 * self.scale/obj.scale * self.velocity[1] * self.elasticity
+                        self.velocity[1] *= -self.elasticity
                         self.position[1] = obj.position[1] - obj.scale/2 - self.scale/2
                         self.velocity[0] -= self.velocity[0]*self.roughness
                         if (abs(self.velocity[1]) < 15):
@@ -133,21 +133,23 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                     if yBottomCollision:
                         transferredEnergy = self.scale/obj.scale * self.velocity[1] * (1-self.elasticity)
                         obj.velocity[1] += transferredEnergy
-                        self.velocity[1] = -1 * self.scale/obj.scale * self.velocity[1] * self.elasticity
+                        self.velocity[1] *= -self.elasticity
                         self.position[1] = obj.position[1] + obj.scale/2 + self.scale/2
                         self.velocity[0] -= self.velocity[0]*self.roughness
-                        if (abs(self.velocity[1]) < 15):
+                        if (abs(self.velocity[1]) < 50):
                             self.velocity[1] = 0
                 if yCenterCollision:
                     if xLeftCollsion:
                         transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
                         obj.velocity[0] += transferredEnergy
-                        self.velocity[0] = -self.scale/obj.scale * self.velocity[0] * self.elasticity
+                        self.velocity[0] *= -self.elasticity
+
                         self.position[0] = obj.position[0] + obj.scale/2 + self.scale/2
                     if xRightCollision:
                         transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
                         obj.velocity[0] += transferredEnergy
-                        self.velocity[0] = -self.scale/obj.scale * self.velocity[0] * self.elasticity
+                        self.velocity[0] *= -self.elasticity
+
                         self.position[0] = obj.position[0] - obj.scale/2 - self.scale/2
 
             # Mouse grabbing
@@ -160,9 +162,9 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                     self.grabbing = True
 
                 if self.grabbing:
-                    xvel = (mousex - self.position[0]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2)) / 50
-                    yvel = (mousey - self.position[1]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2)) / 50
-                    self.velocity = [xvel, yvel]
+                    xvel = (mousex - self.position[0]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2)) / 10
+                    yvel = (mousey - self.position[1]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2)) / 10
+                    self.velocity = [xvel/self.scale, yvel/self.scale]
 
                 self.lastFrameMouseDown = True
             elif pygame.mouse.get_pressed()[2]:
