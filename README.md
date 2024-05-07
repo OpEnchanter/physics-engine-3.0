@@ -8,6 +8,7 @@ This is the third of the pygamed based physics engines I have made which now inc
 
 - When run, the python script will show two windows one of which is a settings window using the tkinter library, and the other is the physics engine viewport where you can see the output of the physics engine, this window is using the pygame library and is run asynchronously with the settings window.
 - **Keybinds**
+    - *Left Mouse Button (LMB)*: When hovering an object, pressing LMB allows you to grab the object and move it around the scene unless the object is frozen.
     - *Right Mouse Button (RMB)*: When hovering an object and pressing RMB you will select the object and then can change it's properties which will then by applied on the next scene reset.
     - *F* : When holding the F key objects will have a force applied on them away from the mouse cursor's position
 - **Settings UI**
