@@ -2,7 +2,7 @@ import pygame
 import time
 import multiprocessing as mp
 import tkinter as tk
-import math
+import math, random
 
 pygame.init()
 
@@ -36,16 +36,39 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             self.terminal_vel = 1000
             self.elasticity = elasticity
             self.lastFrameMouseDown = False
-            self.color = (0,0,255)
+            self.color = (0,0,0)
             self.is_selected = False
             self.grabbing = False
             self.roughness = roughness
             self.static = False
 
         def frame(self, timer, objs):
+
+            if self.static:
+                self.color = (0,153,255)
+            else:
+                self.color = (0,0,0)
+            if self.is_selected:
+                pygame.draw.rect(self.win, (94, 255, 140), (self.position[0] - self.scale / 2 - 2, self.position[1] - self.scale / 2 - 2, self.scale+4, self.scale+4))
+
             pygame.draw.rect(self.win, self.color, (self.position[0] - self.scale / 2, self.position[1] - self.scale / 2, self.scale, self.scale))
 
             # Frame Physics
+
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_f]:
+                mouseX, mouseY = pygame.mouse.get_pos()  # Obtain the mouse position first
+                dist = math.sqrt(math.pow(mouseX - self.position[0], 2) + math.pow(mouseY - self.position[1], 2))
+
+                mouseWind = [self.position[0] - mouseX, self.position[1] - mouseY]
+
+                # Scale mouseWind based on distance
+                if dist != 0:  # Avoid division by zero
+                    mouseWind[0] /= 100 * (dist/100)
+                    mouseWind[1] /= 100 * (dist/100)
+                self.velocity[1] += mouseWind[1]
+                self.velocity[0] += mouseWind[0]
+
             if self.velocity[1] < self.terminal_vel:
                 self.velocity[1] += self.g * timer.deltatime
 
@@ -119,12 +142,12 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                     if xLeftCollsion:
                         transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
                         obj.velocity[0] += transferredEnergy
-                        self.velocity[0] -= self.scale/obj.scale * self.velocity[0] * self.elasticity
+                        self.velocity[0] = -self.scale/obj.scale * self.velocity[0] * self.elasticity
                         self.position[0] = obj.position[0] + obj.scale/2 + self.scale/2
                     if xRightCollision:
                         transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
                         obj.velocity[0] += transferredEnergy
-                        self.velocity[0] -= self.scale/obj.scale * self.velocity[0] * self.elasticity
+                        self.velocity[0] = -self.scale/obj.scale * self.velocity[0] * self.elasticity
                         self.position[0] = obj.position[0] - obj.scale/2 - self.scale/2
 
             # Mouse grabbing
@@ -145,16 +168,90 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             elif pygame.mouse.get_pressed()[2]:
                 mousex, mousey = pygame.mouse.get_pos()
                 if self.position[0] - self.scale/2 < mousex < self.position[0] + self.scale/2 and self.position[1] - self.scale/2 < mousey < self.position[1] + self.scale/2:
-                    self.color = (255,0,0)
                     self.is_selected = True
                 else:
-                    self.color=(0,0,255)
                     self.is_selected = False
             else:
                 mousex, mousey = pygame.mouse.get_pos()
                 self.grabbing = False
 
                 self.lastFrameMouseDown = False
+
+
+    # This class is only for storing data related to each segment in the rope
+    class ropeSegment:
+        def __init__(self, pos):
+            self.position = pos
+            self.velocity = [0,0]
+
+    # This class is used to store data for rope start point
+    class ropeStart:
+        def __init__(self, pos):
+            self.position = pos
+
+
+    # This class runs physics for all segments of rope
+    class rope:
+        def __init__(self, ropeSegments, segmentLength, window, g):
+            self.segments = ropeSegments
+            self.segLen = segmentLength
+            self.segments = []
+            self.window = window
+            self.g = g
+
+            self.termvel = 1
+
+            winX, winY = self.window.get_size()
+
+            self.segments.append(ropeStart([winX/2, winY/2]))
+
+            for i in range(ropeSegments):
+                self.segments.append(ropeSegment([winX/2, winY/2 + self.segLen * i]))
+        def frame(self, timer):
+            winX, winY = self.window.get_size()
+            for i in range(len(self.segments)-1):
+                segment = self.segments[i+1]
+                pos1 = (self.segments[i+1].position[0], self.segments[i+1].position[1])
+                pos2 = (self.segments[(i+2) % len(self.segments)].position[0], self.segments[(i+2) % len(self.segments)].position[1])
+                pygame.draw.line(self.window, (0,0,0), pos1, pos2, 5)
+
+                mouseX, mouseY = pygame.mouse.get_pos()
+                mouseWind = [segment.position[0] - mouseX, segment.position[1] - mouseY]
+
+                mouseWind[0] /= 1000 / random.randint(1,5)
+                mouseWind[1] /= 1000 / random.randint(1,5)
+
+                segment.velocity[0] += mouseWind[0]
+                segment.velocity[1] += mouseWind[1]
+
+
+                if segment.velocity[1] < self.termvel:
+                    segment.velocity[1] += self.g
+                segment.position[1] += segment.velocity[1]
+                segment.position[0] += segment.velocity[0]
+
+                distToLastSeg = math.sqrt(math.pow(segment.position[0] - self.segments[i-1].position[0],2) + math.pow(segment.position[1] - self.segments[i-1].position[1],2))
+
+                if (distToLastSeg > self.segLen):
+                    vector = [segment.position[0] - self.segments[i].position[0], segment.position[1] - self.segments[i].position[1]]
+                    magnitude = math.sqrt(math.pow(vector[0],2) + math.pow(vector[1],2))
+                    if magnitude == 0:
+                        magnitude = 1
+                    vector = [vector[0]/magnitude, vector[1]/magnitude]
+
+                    target = vector*self.segLen
+
+                    target[0] += winX/2
+                    target[1] += winY/2
+
+                    xvel = (target[0] - segment.position[0]) * math.sqrt(math.pow(target[0] - segment.position[0], 2) + math.pow(target[1] - segment.position[1], 2)) / 5000
+                    yvel = (target[1] - segment.position[1]) * math.sqrt(math.pow(target[1] - segment.position[0], 2) + math.pow(target[1] - segment.position[1], 2)) / 5000
+                    segment.velocity = [xvel, yvel]
+                else:
+                    segment.velocity = [0,0]
+
+                
+                 
 
 
     scales = [25, 25]
@@ -171,6 +268,9 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
     last_frame_elasticity_slider = 0
     last_frame_roughness_slider = 0
 
+
+    #rope = rope(10, 10, win, 5)
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -180,6 +280,8 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
         for obj in scene_objects:
             other_objs = [other_obj for other_obj in scene_objects if other_obj != obj]
             obj.frame(timer, other_objs)
+
+        #rope.frame(timer)
         pygame.display.flip()
         timer.frame()
 
@@ -285,7 +387,7 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
     scale_label = tk.Label(text="Object Scale:")
     scale_label.pack()
 
-    scale_slider = tk.Scale(win, from_=25, to=200, orient="horizontal", command=on_scale_change)
+    scale_slider = tk.Scale(win, from_=5, to=200, orient="horizontal", command=on_scale_change)
     scale_slider.pack()
 
     elasticity_label = tk.Label(text="Object Elasticity:")
