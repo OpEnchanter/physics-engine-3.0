@@ -24,7 +24,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             self.last_frame_time = time.time()
             self.frames += 1
 
-    class GameObject:
+    class RigidBody:
         def __init__(self, window, scale, density, g, elasticity, pos, roughness):
             self.win = window
             self.g = g
@@ -261,8 +261,8 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
     roughnesses = [0.1, 0.1]
     elasticities = [0.7, 0.7]
     scene_objects = []
-    scene_objects.append(GameObject(win, scales[0], 1, Kg.value, elasticities[0], positions[0], roughnesses[0]))
-    scene_objects.append(GameObject(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+    scene_objects.append(RigidBody(win, scales[0], 1, Kg.value, elasticities[0], positions[0], roughnesses[0]))
+    scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
     timer = Timer()
     running = True
 
@@ -291,7 +291,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
         if reset_event.value == True:
             print("Resetting Scene")
             for obj in scene_objects:
-                scene_objects[scene_objects.index(obj)] = GameObject(win, scales[scene_objects.index(obj)], 1, Kg.value, elasticities[scene_objects.index(obj)], positions[scene_objects.index(obj)], roughnesses[scene_objects.index(obj)])
+                scene_objects[scene_objects.index(obj)] = RigidBody(win, scales[scene_objects.index(obj)], 1, Kg.value, elasticities[scene_objects.index(obj)], positions[scene_objects.index(obj)], roughnesses[scene_objects.index(obj)])
             reset_event.value = False
 
         if spawn_event.value == True:
@@ -308,7 +308,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 roughnesses.append(roughness.value)
                 elasticities.append(elasticity.value)
             
-            scene_objects.append(GameObject(win, scales[len(scene_objects)], 1, Kg.value, elasticities[len(scene_objects)], positions[len(scene_objects)], roughnesses[len(scene_objects)]))
+            scene_objects.append(RigidBody(win, scales[len(scene_objects)], 1, Kg.value, elasticities[len(scene_objects)], positions[len(scene_objects)], roughnesses[len(scene_objects)]))
             spawn_event.value = False
 
         if reset_objs_event.value == True:
