@@ -179,81 +179,44 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
                 self.lastFrameMouseDown = False
 
-
-    # This class is only for storing data related to each segment in the rope
-    class ropeSegment:
-        def __init__(self, pos):
-            self.position = pos
-            self.velocity = [0,0]
-
-    # This class is used to store data for rope start point
-    class ropeStart:
-        def __init__(self, pos):
-            self.position = pos
-
-
-    # This class runs physics for all segments of rope
-    class rope:
-        def __init__(self, ropeSegments, segmentLength, window, g):
-            self.segments = ropeSegments
-            self.segLen = segmentLength
-            self.segments = []
-            self.window = window
-            self.g = g
-
-            self.termvel = 1
-
-            winX, winY = self.window.get_size()
-
-            self.segments.append(ropeStart([winX/2, winY/2]))
-
-            for i in range(ropeSegments):
-                self.segments.append(ropeSegment([winX/2, winY/2 + self.segLen * i]))
+    # Spring system
+    class spring():
+        def __init__(self, obj1, obj2, length):
+            self.obj1 = obj1
+            self.obj2 = obj2
+            self.length = length
         def frame(self, timer):
-            winX, winY = self.window.get_size()
-            for i in range(len(self.segments)-1):
-                segment = self.segments[i+1]
-                pos1 = (self.segments[i+1].position[0], self.segments[i+1].position[1])
-                pos2 = (self.segments[(i+2) % len(self.segments)].position[0], self.segments[(i+2) % len(self.segments)].position[1])
-                pygame.draw.line(self.window, (0,0,0), pos1, pos2, 5)
+            # Retrieve locations of both objects
+            p1 = self.obj1.position
+            p2 = self.obj2.position
 
-                mouseX, mouseY = pygame.mouse.get_pos()
-                mouseWind = [segment.position[0] - mouseX, segment.position[1] - mouseY]
+            # Get distance between points
+            xdist = p2[0] - p1[0]
+            ydist = p2[1] - p1[1]
 
-                mouseWind[0] /= 1000 / random.randint(1,5)
-                mouseWind[1] /= 1000 / random.randint(1,5)
+            # Create vector pointing from one point to another
+            vector = [xdist, ydist]
 
-                segment.velocity[0] += mouseWind[0]
-                segment.velocity[1] += mouseWind[1]
+            # These are defining our target
+            tx = p1[0]+(vector[0]*self.length)
+            ty = p1[1]+(vector[1]*self.length)
 
+            txdist = p2[0]-tx
+            tydist = p2[1]-ty
 
-                if segment.velocity[1] < self.termvel:
-                    segment.velocity[1] += self.g
-                segment.position[1] += segment.velocity[1]
-                segment.position[0] += segment.velocity[0]
+            tdist = math.sqrt(math.pow(txdist, 2) + math.pow(tydist, 2))
 
-                distToLastSeg = math.sqrt(math.pow(segment.position[0] - self.segments[i-1].position[0],2) + math.pow(segment.position[1] - self.segments[i-1].position[1],2))
+            tvector = [txdist, tydist]
 
-                if (distToLastSeg > self.segLen):
-                    vector = [segment.position[0] - self.segments[i].position[0], segment.position[1] - self.segments[i].position[1]]
-                    magnitude = math.sqrt(math.pow(vector[0],2) + math.pow(vector[1],2))
-                    if magnitude == 0:
-                        magnitude = 1
-                    vector = [vector[0]/magnitude, vector[1]/magnitude]
+            print(tdist)
 
-                    target = vector*self.segLen
+            v1 = tdist * tvector[0]
+            v2 = tdist * tvector[1]
 
-                    target[0] += winX/2
-                    target[1] += winY/2
+            self.obj2.velocity[0] += v1 / 100000
+            self.obj2.velocity[1] += v2 / 100000
 
-                    xvel = (target[0] - segment.position[0]) * math.sqrt(math.pow(target[0] - segment.position[0], 2) + math.pow(target[1] - segment.position[1], 2)) / 5000
-                    yvel = (target[1] - segment.position[1]) * math.sqrt(math.pow(target[1] - segment.position[0], 2) + math.pow(target[1] - segment.position[1], 2)) / 5000
-                    segment.velocity = [xvel, yvel]
-                else:
-                    segment.velocity = [0,0]
-
-                
-                 
+            pygame.draw.line(win, (0,0,0), p1, p2, 10)
 
 
     scales = [25, 25]
@@ -270,8 +233,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
     last_frame_elasticity_slider = 0
     last_frame_roughness_slider = 0
 
-
-    #rope = rope(10, 10, win, 5)
+    spring = spring(scene_objects[0], scene_objects[1], 3)
 
     while running:
         for event in pygame.event.get():
@@ -283,7 +245,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             other_objs = [other_obj for other_obj in scene_objects if other_obj != obj]
             obj.frame(timer, other_objs)
 
-        #rope.frame(timer)
+        spring.frame(timer)
         pygame.display.flip()
         timer.frame()
 

@@ -31,6 +31,9 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+
+    rad_angle += math.radians(15)
+
     win.fill((255, 255, 255))
 
     winX, winY = win.get_size()
