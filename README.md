@@ -20,3 +20,8 @@ This is the third of the pygamed based physics engines I have made which now inc
     - *Spawn Object button*: Spawns a new object in the center of the screen with values specefied in the settings menu, or preset values if another object is selected.
     - *Remove All Objects Button*: Removes all objects currently present in the scene.
     - *Reset Button*: Resets all objects to their default positions, while not deleting the objects.
+
+
+**Objects:**
+- *RigidBody*: This is an object that has physics applied to it, such as gravity and collision with other physics objects.
+- *Spring*: This is an object that takes in two objects, and moves the second object, toward the first.

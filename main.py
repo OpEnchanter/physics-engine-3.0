@@ -6,8 +6,8 @@ import math, random
 
 pygame.init()
 
-def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static):
-    win = pygame.display.set_mode([500, 500])
+def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale):
+    win = pygame.display.set_mode([1000, 1000])
     pygame.display.set_caption("Physics Engine Viewport")
 
     class Timer:
@@ -73,8 +73,11 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 self.velocity[1] += self.g * timer.deltatime
 
             if (not self.static):
-                self.position[0] += self.velocity[0] * timer.deltatime
-                self.position[1] += self.velocity[1] * timer.deltatime
+                self.position[0] += self.velocity[0] * timer.deltatime * timescale.value
+                self.position[1] += self.velocity[1] * timer.deltatime * timescale.value
+            
+            self.velocity[0] *= 0.999
+            self.velocity[1] *= 0.999
 
             # Frame Collisions
             if self.position[0] > self.win.get_size()[0] - self.scale / 2:
@@ -208,24 +211,27 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
             tvector = [txdist, tydist]
 
-            print(tdist)
-
             v1 = tdist * tvector[0]
             v2 = tdist * tvector[1]
 
             self.obj2.velocity[0] += v1 / 100000
             self.obj2.velocity[1] += v2 / 100000
 
-            pygame.draw.line(win, (0,0,0), p1, p2, 10)
+            pygame.draw.line(win, (0,0,0), p1, p2, 7)
 
 
-    scales = [25, 25]
-    positions = [[0,0], [100,0]]
-    roughnesses = [0.1, 0.1]
-    elasticities = [0.7, 0.7]
+    scales = [25, 5,10,0,0,0]
+    positions = [[0,0], [100,0], [100,0], [100,0], [100,0], [100,0]]
+    roughnesses = [0.1, 0.1,0,0,0,0]
+    elasticities = [0.7, 0.7,0,0,0,0]
     scene_objects = []
     scene_objects.append(RigidBody(win, scales[0], 1, Kg.value, elasticities[0], positions[0], roughnesses[0]))
     scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+    scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+    scene_objects.append(RigidBody(win, scales[2], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+
+    scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+    scene_objects.append(RigidBody(win, scales[2], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
     timer = Timer()
     running = True
 
@@ -233,7 +239,19 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
     last_frame_elasticity_slider = 0
     last_frame_roughness_slider = 0
 
-    spring = spring(scene_objects[0], scene_objects[1], 3)
+    scene_objects[0].static = True
+
+    spring1 = spring(scene_objects[0], scene_objects[1], 10)
+    spring2 = spring(scene_objects[2], scene_objects[1], 7.5)
+    spring3 = spring(scene_objects[1], scene_objects[2], 7.5)
+
+    spring4 = spring(scene_objects[2], scene_objects[3], 7.5)
+    spring5 = spring(scene_objects[3], scene_objects[2], 7.5)
+
+    spring6 = spring(scene_objects[2], scene_objects[4], 7.5)
+    spring7 = spring(scene_objects[4], scene_objects[2], 7.5)
+    spring8 = spring(scene_objects[4], scene_objects[5], 7.5)
+    spring9 = spring(scene_objects[5], scene_objects[4], 7.5)
 
     while running:
         for event in pygame.event.get():
@@ -245,7 +263,15 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             other_objs = [other_obj for other_obj in scene_objects if other_obj != obj]
             obj.frame(timer, other_objs)
 
-        spring.frame(timer)
+        spring1.frame(timer)
+        spring2.frame(timer)
+        spring3.frame(timer)
+        spring4.frame(timer)
+        spring5.frame(timer)
+        spring6.frame(timer)
+        spring7.frame(timer)
+        spring8.frame(timer)
+        spring9.frame(timer)
         pygame.display.flip()
         timer.frame()
 
@@ -313,7 +339,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     pygame.quit()
 
-def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static):
+def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale):
     def reset():
         reset_event.value = True
     
@@ -335,6 +361,9 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
     def on_roughness_change(value):
         roughness.value = float(value)
 
+    def on_timescale_change(value):
+        timescale.value = float(value)
+
     def set_static():
         static.value = True
 
@@ -347,6 +376,12 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
 
     gravity_slider = tk.Scale(win, from_=0, to=981, orient="horizontal", command=on_g_change)
     gravity_slider.pack()
+
+    timescale_label = tk.Label(text="Timescale:")
+    timescale_label.pack()
+
+    timescale_slider = tk.Scale(win, from_=0, to=10, orient="horizontal", command=on_timescale_change, resolution=0.1)
+    timescale_slider.pack()
 
     scale_label = tk.Label(text="Object Scale:")
     scale_label.pack()
@@ -383,13 +418,14 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
 if __name__ == "__main__":
     reset_event = mp.Value('b', False)
     spawn_event = mp.Value('b', False)
+    timescale = mp.Value('f', 1)
     static = mp.Value('b', False)
     reset_objs_event = mp.Value('b', False)
-    Kg = mp.Value('f', 98.1)
+    Kg = mp.Value('f', 981)
     scale = mp.Value('f', 100)
     elasticity = mp.Value('f', 0.7)
     roughness = mp.Value('f', 0.2)
-    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static))
-    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static))
+    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale))
+    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale))
     engine_process.start()
     ui_process.start()
