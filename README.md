@@ -10,7 +10,9 @@ This is the third of the pygamed based physics engines I have made which now inc
 - **Keybinds**
     - *Left Mouse Button (LMB)*: When hovering an object, pressing LMB allows you to grab the object and move it around the scene unless the object is frozen.
     - *Right Mouse Button (RMB)*: When hovering an object and pressing RMB you will select the object and then can change it's properties which will then by applied on the next scene reset.
-    - *F* : When holding the F key objects will have a force applied on them away from the mouse cursor's position
+    - *F*: When holding the F key objects will have a force applied on them away from the mouse cursor's position
+    - *S*: Connects two objects (Selected Object and Secondary Selected Object) with a spring
+    - *LeftShift*: When holding the LeftShift key you are able to use RMB to Secondary Select an object, to deselect hold LeftShift and either click on another object or somewhere else in the viewport with RMB
 - **Settings UI**
     - *World Gravity Slider*: This slider is used to adjust the simulation-wide gravity variable which can make objects fall faster, slower, or not at all.
     - *Object Scale Slider*: Adjusts an object's scale when an object is selected or, if no object is selected will adjust the scale of the next object that is spawned

@@ -7,7 +7,7 @@ import math, random
 pygame.init()
 
 def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale):
-    win = pygame.display.set_mode([1000, 1000])
+    win = pygame.display.set_mode([750,750])
     pygame.display.set_caption("Physics Engine Viewport")
 
     class Timer:
@@ -38,6 +38,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             self.lastFrameMouseDown = False
             self.color = (0,0,0)
             self.is_selected = False
+            self.is_selected_secondary = False
             self.grabbing = False
             self.roughness = roughness
             self.static = False
@@ -50,7 +51,8 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 self.color = (0,0,0)
             if self.is_selected:
                 pygame.draw.rect(self.win, (94, 255, 140), (self.position[0] - self.scale / 2 - 2, self.position[1] - self.scale / 2 - 2, self.scale+4, self.scale+4))
-
+            if self.is_selected_secondary:
+                pygame.draw.rect(self.win, (255, 184, 43), (self.position[0] - self.scale / 2 - 2, self.position[1] - self.scale / 2 - 2, self.scale+4, self.scale+4))
             pygame.draw.rect(self.win, self.color, (self.position[0] - self.scale / 2, self.position[1] - self.scale / 2, self.scale, self.scale))
 
             # Frame Physics
@@ -172,10 +174,16 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 self.lastFrameMouseDown = True
             elif pygame.mouse.get_pressed()[2]:
                 mousex, mousey = pygame.mouse.get_pos()
-                if self.position[0] - self.scale/2 < mousex < self.position[0] + self.scale/2 and self.position[1] - self.scale/2 < mousey < self.position[1] + self.scale/2:
-                    self.is_selected = True
+                if (keys[pygame.K_LSHIFT]):
+                    if self.position[0] - self.scale/2 < mousex < self.position[0] + self.scale/2 and self.position[1] - self.scale/2 < mousey < self.position[1] + self.scale/2:
+                        self.is_selected_secondary = True
+                    else:
+                        self.is_selected_secondary = False
                 else:
-                    self.is_selected = False
+                    if self.position[0] - self.scale/2 < mousex < self.position[0] + self.scale/2 and self.position[1] - self.scale/2 < mousey < self.position[1] + self.scale/2:
+                        self.is_selected = True
+                    else:
+                        self.is_selected = False
             else:
                 mousex, mousey = pygame.mouse.get_pos()
                 self.grabbing = False
@@ -241,39 +249,74 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     scene_objects[0].static = True
 
-    spring1 = spring(scene_objects[0], scene_objects[1], 10)
-    spring2 = spring(scene_objects[2], scene_objects[1], 7.5)
-    spring3 = spring(scene_objects[1], scene_objects[2], 7.5)
 
-    spring4 = spring(scene_objects[2], scene_objects[3], 7.5)
-    spring5 = spring(scene_objects[3], scene_objects[2], 7.5)
+    scene_springs = []
 
-    spring6 = spring(scene_objects[2], scene_objects[4], 7.5)
-    spring7 = spring(scene_objects[4], scene_objects[2], 7.5)
-    spring8 = spring(scene_objects[4], scene_objects[5], 7.5)
-    spring9 = spring(scene_objects[5], scene_objects[4], 7.5)
+    scene_springs.append(spring(scene_objects[0], scene_objects[1], 10))
+    scene_springs.append(spring(scene_objects[2], scene_objects[1], 7.5))
+    scene_springs.append(spring(scene_objects[1], scene_objects[2], 7.5))
+
+    scene_springs.append(spring(scene_objects[2], scene_objects[3], 7.5))
+    scene_springs.append(spring(scene_objects[3], scene_objects[2], 7.5))
+
+    scene_springs.append(spring(scene_objects[2], scene_objects[4], 7.5))
+    scene_springs.append(spring(scene_objects[4], scene_objects[2], 7.5))
+    scene_springs.append(spring(scene_objects[4], scene_objects[5], 7.5))
+    scene_springs.append(spring(scene_objects[5], scene_objects[4], 7.5))
+
+    clock = pygame.time.Clock()
+    font = pygame.font.Font(None, 24)  # You can specify a font file path instead of None for a custom font
+
+    lastFrameKeys = pygame.key.get_pressed()
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        win.fill((255, 255, 255))
+        win.fill((255, 255, 255)) # Reset window to white
+
+        clock.tick(6000)
+
+        fps = clock.get_fps()
+
+        text = font.render("FPS:"+str(int(round(fps, 2))), True, (0, 0, 0))  # (text, antialiasing, color)
+        text_rect = text.get_rect(center=(55, 15))  # Center the text on the screen
+        win.blit(text, text_rect)
+
+        text = font.render("Objects:"+str(int(len(scene_objects))), True, (0, 0, 0))  # (text, antialiasing, color)
+        text_rect = text.get_rect(center=(55, 35))  # Center the text on the screen
+        win.blit(text, text_rect)
+
+        text = font.render("Springs:"+str(int(len(scene_springs))), True, (0, 0, 0))  # (text, antialiasing, color)
+        text_rect = text.get_rect(center=(55, 55))  # Center the text on the screen
+        win.blit(text, text_rect)
+
+        # Frame update handling
         for obj in scene_objects:
             other_objs = [other_obj for other_obj in scene_objects if other_obj != obj]
             obj.frame(timer, other_objs)
+        for spring_x in scene_springs:
+            spring_x.frame(timer)
 
-        spring1.frame(timer)
-        spring2.frame(timer)
-        spring3.frame(timer)
-        spring4.frame(timer)
-        spring5.frame(timer)
-        spring6.frame(timer)
-        spring7.frame(timer)
-        spring8.frame(timer)
-        spring9.frame(timer)
         pygame.display.flip()
         timer.frame()
+
+
+        # Input Handling
+
+        # Spring Add Handling
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_s] and not lastFrameKeys[pygame.K_s]:
+            obj1 = [obj for obj in scene_objects if obj.is_selected]
+            obj2 = [obj for obj in scene_objects if obj.is_selected_secondary]
+
+            if len(obj1) > 0 and len(obj2) > 0:
+                scene_springs.append(spring(obj1[0], obj2[0], 5))
+                scene_springs.append(spring(obj2[0], obj1[0], 5))
+            else:
+                print("Error: No two objects selected")
+        lastFrameKeys = keys
 
         # Scene reset handling
         if reset_event.value == True:
@@ -306,6 +349,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             roughnesses = []
             elasticities = []
             scene_objects = []
+            scene_springs = []
             reset_objs_event.value = False
 
         if static.value == True:
