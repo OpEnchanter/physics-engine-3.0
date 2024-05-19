@@ -2,11 +2,11 @@ import pygame
 import time
 import multiprocessing as mp
 import tkinter as tk
-import math, random
+import math, random, sys
 
 pygame.init()
 
-def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale):
+def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale, detail_view):
     win = pygame.display.set_mode([750,750])
     pygame.display.set_caption("Physics Engine Viewport")
 
@@ -54,6 +54,9 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             if self.is_selected_secondary:
                 pygame.draw.rect(self.win, (255, 184, 43), (self.position[0] - self.scale / 2 - 2, self.position[1] - self.scale / 2 - 2, self.scale+4, self.scale+4))
             pygame.draw.rect(self.win, self.color, (self.position[0] - self.scale / 2, self.position[1] - self.scale / 2, self.scale, self.scale))
+
+            if (detail_view.value):
+                pygame.draw.line(self.win, (0,0,255), self.position, [self.position[0] + (self.velocity[0]/10), self.position[1] + (self.velocity[1]/10)], 5)
 
             # Frame Physics
 
@@ -192,10 +195,11 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     # Spring system
     class spring():
-        def __init__(self, obj1, obj2, length):
+        def __init__(self, obj1, obj2, length, stiffness):
             self.obj1 = obj1
             self.obj2 = obj2
             self.length = length
+            self.stiffness = stiffness
         def frame(self, timer):
             # Retrieve locations of both objects
             p1 = self.obj1.position
@@ -206,26 +210,36 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             ydist = p2[1] - p1[1]
 
             # Create vector pointing from one point to another
-            vector = [xdist, ydist]
+            magnitude = math.sqrt(math.pow(xdist, 2) + math.pow(ydist,2))
+            vector = [0, 0]
+
+            if magnitude != 0:
+                vector = [xdist/magnitude, ydist/magnitude]
 
             # These are defining our target
             tx = p1[0]+(vector[0]*self.length)
             ty = p1[1]+(vector[1]*self.length)
 
-            txdist = p2[0]-tx
-            tydist = p2[1]-ty
+            txdist = tx-p2[0]
+            tydist = ty-p2[1]
 
             tdist = math.sqrt(math.pow(txdist, 2) + math.pow(tydist, 2))
 
-            tvector = [txdist, tydist]
+            tmagnitude = math.sqrt(math.pow(xdist, 2) + math.pow(ydist,2))
+            tvector = [0, 0]
+            if magnitude != 0:
+                tvector = [txdist/tmagnitude, tydist/tmagnitude]
 
             v1 = tdist * tvector[0]
             v2 = tdist * tvector[1]
 
-            self.obj2.velocity[0] += v1 / 100000
-            self.obj2.velocity[1] += v2 / 100000
+            self.obj2.velocity[0] += v1 / (self.obj2.scale/10) * self.stiffness
+            self.obj2.velocity[1] += v2 / (self.obj2.scale/10) * self.stiffness
 
             pygame.draw.line(win, (0,0,0), p1, p2, 7)
+
+            if (detail_view.value):
+                pygame.draw.circle(win, (255,0,0), [tx, ty], 5)
 
 
     scales = [25, 5,10,0,0,0]
@@ -252,20 +266,25 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     scene_springs = []
 
-    scene_springs.append(spring(scene_objects[0], scene_objects[1], 10))
-    scene_springs.append(spring(scene_objects[2], scene_objects[1], 7.5))
-    scene_springs.append(spring(scene_objects[1], scene_objects[2], 7.5))
+    scene_springs.append(spring(scene_objects[0], scene_objects[1], 20, 0.1))
+    scene_springs.append(spring(scene_objects[2], scene_objects[1], 20, 0.1))
+    scene_springs.append(spring(scene_objects[1], scene_objects[2], 20, 0.1))
 
-    scene_springs.append(spring(scene_objects[2], scene_objects[3], 7.5))
-    scene_springs.append(spring(scene_objects[3], scene_objects[2], 7.5))
+    scene_springs.append(spring(scene_objects[2], scene_objects[3], 20, 0.1))
+    scene_springs.append(spring(scene_objects[3], scene_objects[2], 20, 0.1))
 
-    scene_springs.append(spring(scene_objects[2], scene_objects[4], 7.5))
-    scene_springs.append(spring(scene_objects[4], scene_objects[2], 7.5))
-    scene_springs.append(spring(scene_objects[4], scene_objects[5], 7.5))
-    scene_springs.append(spring(scene_objects[5], scene_objects[4], 7.5))
+    scene_springs.append(spring(scene_objects[2], scene_objects[4], 20, 0.1))
+    scene_springs.append(spring(scene_objects[4], scene_objects[2], 20, 0.1))
+    scene_springs.append(spring(scene_objects[4], scene_objects[5], 20, 0.1))
+    scene_springs.append(spring(scene_objects[5], scene_objects[4], 20, 0.1))
 
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 24)  # You can specify a font file path instead of None for a custom font
+    lastfpsupd = 0
+    lastframetime = 0
+    fpslist= []
+
+    fps = 0
 
     lastFrameKeys = pygame.key.get_pressed()
 
@@ -275,21 +294,35 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 running = False
 
         win.fill((255, 255, 255)) # Reset window to white
-
         clock.tick(6000)
+        if time.time()-lastfpsupd > 0.1 and time.time() != lastframetime:
+            fps = clock.get_fps()
+            lastfpsupd = time.time()
+            fpslist.append(fps)
+        lastframetime = time.time()
 
-        fps = clock.get_fps()
+        total = 0
+        for fps in fpslist:
+            total += fps
+        avgfps = total/len(fpslist)
+
+        if (len(fpslist)) > 50:
+            fpslist.pop(0)
 
         text = font.render("FPS:"+str(int(round(fps, 2))), True, (0, 0, 0))  # (text, antialiasing, color)
         text_rect = text.get_rect(center=(55, 15))  # Center the text on the screen
         win.blit(text, text_rect)
 
-        text = font.render("Objects:"+str(int(len(scene_objects))), True, (0, 0, 0))  # (text, antialiasing, color)
+        text = font.render("AVG:"+str(int(avgfps)), True, (0, 0, 0))  # (text, antialiasing, color)
         text_rect = text.get_rect(center=(55, 35))  # Center the text on the screen
         win.blit(text, text_rect)
 
-        text = font.render("Springs:"+str(int(len(scene_springs))), True, (0, 0, 0))  # (text, antialiasing, color)
+        text = font.render("Objects:"+str(int(len(scene_objects))), True, (0, 0, 0))  # (text, antialiasing, color)
         text_rect = text.get_rect(center=(55, 55))  # Center the text on the screen
+        win.blit(text, text_rect)
+
+        text = font.render("Springs:"+str(int(len(scene_springs))), True, (0, 0, 0))  # (text, antialiasing, color)
+        text_rect = text.get_rect(center=(55, 75))  # Center the text on the screen
         win.blit(text, text_rect)
 
         # Frame update handling
@@ -312,10 +345,34 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             obj2 = [obj for obj in scene_objects if obj.is_selected_secondary]
 
             if len(obj1) > 0 and len(obj2) > 0:
-                scene_springs.append(spring(obj1[0], obj2[0], 5))
-                scene_springs.append(spring(obj2[0], obj1[0], 5))
+                scene_springs.append(spring(obj1[0], obj2[0], 20+(obj1[0].scale/2), 0.1))
+                scene_springs.append(spring(obj2[0], obj1[0], 20+(obj2[0].scale/2), 0.1))
             else:
                 print("Error: No two objects selected")
+        if keys[pygame.K_e] and not lastFrameKeys[pygame.K_e]:
+            print("Spawning Object")
+            mousex, mousey = pygame.mouse.get_pos()
+            anyObjGrabbed = any(obj.is_selected for obj in scene_objects)
+            if (anyObjGrabbed):
+                scales.append(50)
+                positions.append([0,0])
+                roughnesses.append(0.1)
+                elasticities.append(0.7)
+            else:
+                scales.append(scale.value)
+                positions.append([mousex-win.get_size()[0]/2,mousey-win.get_size()[1]/2])
+                roughnesses.append(roughness.value)
+                elasticities.append(elasticity.value)
+            
+            scene_objects.append(RigidBody(win, scales[len(scene_objects)], 1, Kg.value, elasticities[len(scene_objects)], positions[len(scene_objects)], roughnesses[len(scene_objects)]))
+        if keys[pygame.K_q] and not lastFrameKeys[pygame.K_q]:
+            for obj in scene_objects:
+                if obj.is_selected:
+                    if  obj.static:
+                        obj.static = False
+                        obj.velocity = [0,0]
+                    else:
+                        obj.static = True
         lastFrameKeys = keys
 
         # Scene reset handling
@@ -383,7 +440,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     pygame.quit()
 
-def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale):
+def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale, detail_view):
     def reset():
         reset_event.value = True
     
@@ -411,56 +468,73 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
     def set_static():
         static.value = True
 
+    def detail_view_update():
+        if (not detail_view.value):
+            detail_view.value = True
+        else:
+            detail_view.value = False
+
     win = tk.Tk()
     win.title("Physics Engine Settings")
-    win.geometry("250x500")
+    #win.geometry("250x500")
 
     gravity_label = tk.Label(text="World Gravity:")
-    gravity_label.pack()
+    gravity_label.grid(row=0,column=0, padx=10)
 
     gravity_slider = tk.Scale(win, from_=0, to=981, orient="horizontal", command=on_g_change)
-    gravity_slider.pack()
+    gravity_slider.grid(row=1,column=0, padx=10, pady=10)
 
     timescale_label = tk.Label(text="Timescale:")
-    timescale_label.pack()
+    timescale_label.grid(row=0,column=1, padx=10)
 
     timescale_slider = tk.Scale(win, from_=0, to=10, orient="horizontal", command=on_timescale_change, resolution=0.1)
-    timescale_slider.pack()
+    timescale_slider.grid(row=1,column=1, padx=10, pady=10)
 
     scale_label = tk.Label(text="Object Scale:")
-    scale_label.pack()
+    scale_label.grid(row=0,column=2, padx=10)
 
     scale_slider = tk.Scale(win, from_=5, to=200, orient="horizontal", command=on_scale_change)
-    scale_slider.pack()
+    scale_slider.grid(row=1,column=2, padx=10, pady=10)
 
     elasticity_label = tk.Label(text="Object Elasticity:")
-    elasticity_label.pack()
+    elasticity_label.grid(row=0,column=3, padx=10)
 
     elasticity_slider = tk.Scale(win, from_=0, to=2, orient="horizontal", command=on_elasticity_change, resolution=0.1)
-    elasticity_slider.pack()
+    elasticity_slider.grid(row=1,column=3, padx=10, pady=10)
 
     roughness_label = tk.Label(text="Object Roughness:")
-    roughness_label.pack()
+    roughness_label.grid(row=0,column=4, padx=10)
 
     roughness_slider = tk.Scale(win, from_=0, to=1, orient="horizontal", command=on_roughness_change, resolution=0.1)
-    roughness_slider.pack()
+    roughness_slider.grid(row=1,column=4, padx=10, pady=10)
 
     staticButton = tk.Button(text="Toggle Frozen", command=set_static)
-    staticButton.pack()
+    staticButton.grid(row=2, column=0, padx=10, pady=10)
 
     spawnButton = tk.Button(text="Spawn Object", command=spawn)
-    spawnButton.pack()
+    spawnButton.grid(row=2, column=1, padx=10, pady=10)
 
     delButton = tk.Button(text="Remove All Objects", command=removeall)
-    delButton.pack()
+    delButton.grid(row=2, column=2, padx=10, pady=10)
 
     resetButton = tk.Button(text="Reset", command=reset)
-    resetButton.pack()
+    resetButton.grid(row=2, column=3, padx=10, pady=10)
+
+    resetButton = tk.Button(text="Toggle Detail View", command=detail_view_update)
+    resetButton.grid(row=2, column=4, padx=10, pady=10)
+
+    gravity_slider.set(Kg.value)
+    timescale_slider.set(timescale.value)
+    scale_slider.set(scale.value)
+    elasticity_slider.set(elasticity.value)
+    roughness_slider.set(roughness.value)
+
 
     win.mainloop()
 
 if __name__ == "__main__":
     reset_event = mp.Value('b', False)
+    detail_view = mp.Value('f', False)
     spawn_event = mp.Value('b', False)
     timescale = mp.Value('f', 1)
     static = mp.Value('b', False)
@@ -469,7 +543,7 @@ if __name__ == "__main__":
     scale = mp.Value('f', 100)
     elasticity = mp.Value('f', 0.7)
     roughness = mp.Value('f', 0.2)
-    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale))
-    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale))
+    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view))
+    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view))
     engine_process.start()
     ui_process.start()

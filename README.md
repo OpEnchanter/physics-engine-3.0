@@ -12,9 +12,12 @@ This is the third of the pygamed based physics engines I have made which now inc
     - *Right Mouse Button (RMB)*: When hovering an object and pressing RMB you will select the object and then can change it's properties which will then by applied on the next scene reset.
     - *F*: When holding the F key objects will have a force applied on them away from the mouse cursor's position
     - *S*: Connects two objects (Selected Object and Secondary Selected Object) with a spring
+    - *Q*: When an object is selected, pressing the Q key will freeze it in place.
+    - *E*: When an object is selected pressing E will spawn a new object in the center of the screen, while an object is not selected, the E key will spawn a new object at the mouse cursor.
     - *LeftShift*: When holding the LeftShift key you are able to use RMB to Secondary Select an object, to deselect hold LeftShift and either click on another object or somewhere else in the viewport with RMB
 - **Settings UI**
     - *World Gravity Slider*: This slider is used to adjust the simulation-wide gravity variable which can make objects fall faster, slower, or not at all.
+    - *Timescale Slider*: This slider adjusts the timescale of the physics engine viewport, a value of 1 makes the engine run at normal speed, increasing or decreasing the value increases or decreases how fast the viewport runs.
     - *Object Scale Slider*: Adjusts an object's scale when an object is selected or, if no object is selected will adjust the scale of the next object that is spawned
     - *Object Elasticity Slider*: Adjusts an object's elasticity when an object is selected or, if no object is selected will adjust the elasticity of the next object that is spawned. An object's elasticity can affect how energy is transferred between objects in the case of a collision.
     - *Object Roughness Slider*: Adjusts an object's roughness when an object is selected or, if no object is selected will adjust the roughness of the next object that is spawned. An objects roughness controlls its friction, which will cause it to lose momentum while sliding over the ground, ceiling, or other objects.
