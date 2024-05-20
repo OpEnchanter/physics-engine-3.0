@@ -57,6 +57,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
             if (detail_view.value):
                 pygame.draw.line(self.win, (0,0,255), self.position, [self.position[0] + (self.velocity[0]/10), self.position[1] + (self.velocity[1]/10)], 5)
+                #pygame.draw.circle(self.win, (0,0,255), [self.position[0] + (self.velocity[0]/10), self.position[1] + (self.velocity[1]/10)], 5)
 
             # Frame Physics
 
