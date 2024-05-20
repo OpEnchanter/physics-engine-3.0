@@ -2,12 +2,13 @@ import pygame
 import time
 import multiprocessing as mp
 import tkinter as tk
-import math, random, sys
+from tkinter import ttk
+import math, os, json
 
 pygame.init()
 
-def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale, detail_view):
-    win = pygame.display.set_mode([750,750])
+def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale, detail_view, savefile,loadnew):
+    win = pygame.display.set_mode([750,750], pygame.RESIZABLE)
     pygame.display.set_caption("Physics Engine Viewport")
 
     class Timer:
@@ -242,42 +243,56 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             if (detail_view.value):
                 pygame.draw.circle(win, (255,0,0), [tx, ty], 5)
 
-
-    scales = [25, 5,10,0,0,0]
-    positions = [[0,0], [100,0], [100,0], [100,0], [100,0], [100,0]]
-    roughnesses = [0.1, 0.1,0,0,0,0]
-    elasticities = [0.7, 0.7,0,0,0,0]
+    scales = []
+    positions = []
+    roughnesses = []
+    elasticities = []
     scene_objects = []
-    scene_objects.append(RigidBody(win, scales[0], 1, Kg.value, elasticities[0], positions[0], roughnesses[0]))
-    scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
-    scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
-    scene_objects.append(RigidBody(win, scales[2], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+    scene_springs = []
 
-    scene_objects.append(RigidBody(win, scales[1], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
-    scene_objects.append(RigidBody(win, scales[2], 1, Kg.value, elasticities[1], positions[1], roughnesses[1]))
+    no_collisions = []
+
+    def readSave(filePath):
+        with open(filePath, "r") as file:
+            # Load the JSON data from the file
+            data = json.load(file)
+
+            scne_rb = data["rigidbodies"]
+
+            for rb in scne_rb:
+                scales.append(data["rigidbodies"][rb]["scale"])
+                positions.append([data["rigidbodies"][rb]["x"], data["rigidbodies"][rb]["y"]])
+                roughnesses.append(data["rigidbodies"][rb]["roughness"])
+                elasticities.append(data["rigidbodies"][rb]["elasticity"])
+                scene_objects.append(RigidBody(win, scales[len(scene_objects)], 1, Kg.value, elasticities[len(scene_objects)], positions[len(scene_objects)], roughnesses[len(scene_objects)]))
+                static = data["rigidbodies"][rb]["static"]
+                if static.lower() == "true":
+                    scene_objects[len(scene_objects)-1].static = True
+                elif static.lower() == "false":
+                    scene_objects[len(scene_objects)-1].static = False
+
+                collidable = data["rigidbodies"][rb]["collidable"]
+                if collidable.lower() == "true":
+                    collidable = True
+                elif collidable.lower() == "false":
+                    collidable = False
+                if (not collidable):
+                    no_collisions.append(scene_objects[len(scene_objects)-1])
+
+            scne_sp = data["springs"]
+
+            for sp in scne_sp:
+                scene_springs.append(spring(scene_objects[data["springs"][sp]["obj1"]], scene_objects[data["springs"][sp]["obj2"]], data["springs"][sp]["length"], data["springs"][sp]["stiffness"]))
+
     timer = Timer()
     running = True
+
+    decoded_default_scene = savefile.value.decode()
+    readSave(decoded_default_scene)
 
     last_frame_scale_slider = 0
     last_frame_elasticity_slider = 0
     last_frame_roughness_slider = 0
-
-    scene_objects[0].static = True
-
-
-    scene_springs = []
-
-    scene_springs.append(spring(scene_objects[0], scene_objects[1], 20, 0.1))
-    scene_springs.append(spring(scene_objects[2], scene_objects[1], 20, 0.1))
-    scene_springs.append(spring(scene_objects[1], scene_objects[2], 20, 0.1))
-
-    scene_springs.append(spring(scene_objects[2], scene_objects[3], 20, 0.1))
-    scene_springs.append(spring(scene_objects[3], scene_objects[2], 20, 0.1))
-
-    scene_springs.append(spring(scene_objects[2], scene_objects[4], 20, 0.1))
-    scene_springs.append(spring(scene_objects[4], scene_objects[2], 20, 0.1))
-    scene_springs.append(spring(scene_objects[4], scene_objects[5], 20, 0.1))
-    scene_springs.append(spring(scene_objects[5], scene_objects[4], 20, 0.1))
 
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 24)  # You can specify a font file path instead of None for a custom font
@@ -329,6 +344,9 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
         # Frame update handling
         for obj in scene_objects:
             other_objs = [other_obj for other_obj in scene_objects if other_obj != obj]
+            for no_col in no_collisions:
+                if (no_col != obj):
+                    other_objs.remove(no_col)
             obj.frame(timer, other_objs)
         for spring_x in scene_springs:
             spring_x.frame(timer)
@@ -374,6 +392,15 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                         obj.velocity = [0,0]
                     else:
                         obj.static = True
+        if keys[pygame.K_BACKSPACE] and not lastFrameKeys[pygame.K_BACKSPACE]:
+            for obj in scene_objects:
+                springs = [spring_obj for spring_obj in scene_springs if spring_obj.obj1 == obj or spring_obj.obj2 == obj]
+                if obj.is_selected:
+                    for spring_obj in springs:
+                        if (spring_obj in scene_springs):
+                            scene_springs.remove(spring_obj)
+                    scene_objects.remove(obj)
+            
         lastFrameKeys = keys
 
         # Scene reset handling
@@ -382,6 +409,10 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             for obj in scene_objects:
                 scene_objects[scene_objects.index(obj)] = RigidBody(win, scales[scene_objects.index(obj)], 1, Kg.value, elasticities[scene_objects.index(obj)], positions[scene_objects.index(obj)], roughnesses[scene_objects.index(obj)])
             reset_event.value = False
+        
+        if loadnew.value == True:
+            print("Loading Scene From File")
+            # Load logic here
 
         if spawn_event.value == True:
             print("Spawning Object")
@@ -419,6 +450,19 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                     else:
                         obj.static = True
             static.value = False
+        
+        if loadnew.value == True:
+            print("Loading New Scene...")
+            scales = []
+            positions = []
+            roughnesses = []
+            elasticities = []
+            scene_objects = []
+            scene_springs = []
+            decoded_scene = savefile.value.decode()
+            readSave(decoded_scene)
+            loadnew.value = False
+
 
         if (scale.value != last_frame_scale_slider):
             for obj in scene_objects:
@@ -441,7 +485,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     pygame.quit()
 
-def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale, detail_view):
+def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale, detail_view,savefile,loadnew):
     def reset():
         reset_event.value = True
     
@@ -474,6 +518,48 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
             detail_view.value = True
         else:
             detail_view.value = False
+
+    def load_save():
+        loadwin = tk.Tk()
+        loadwin.title("Load Save")
+        selected_file = tk.StringVar()
+        dropdown_menu = ttk.OptionMenu(loadwin, selected_file)
+        def populate_dropdown():
+            # Get the list of files in the specified directory
+            directory = "saves"
+            files = os.listdir(directory)
+            
+            # Populate the dropdown menu with filenames
+            for file in files:
+                dropdown_menu['menu'].add_command(label=file, command=tk._setit(selected_file, file))
+
+        def on_select(*args):
+            selected_file_label.config(text="Selected File: " + selected_file.get())
+
+        def set_file():
+            savefile.value = f'saves/{selected_file.get()}'.encode()
+            loadnew.value = True
+
+
+        # Populate the dropdown menu
+        populate_dropdown()
+
+        # Create the dropdown menu
+        
+        dropdown_menu.pack(padx=10, pady=10)
+
+        # Display the selected file
+        selected_file_label = tk.Label(loadwin, text="")
+        selected_file_label.pack(pady=10)
+
+        loadButton = tk.Button(loadwin, text="Load Scene", command=set_file)
+        loadButton.pack()
+
+        # Bind the selection event
+        selected_file.trace_add("write", on_select)
+
+        # Run the Tkinter event loop
+        loadwin.mainloop()
 
     win = tk.Tk()
     win.title("Physics Engine Settings")
@@ -521,8 +607,14 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
     resetButton = tk.Button(text="Reset", command=reset)
     resetButton.grid(row=2, column=3, padx=10, pady=10)
 
-    resetButton = tk.Button(text="Toggle Detail View", command=detail_view_update)
-    resetButton.grid(row=2, column=4, padx=10, pady=10)
+    detailButton = tk.Button(text="Toggle Detail View", command=detail_view_update)
+    detailButton.grid(row=2, column=4, padx=10, pady=10)
+
+    saveButton = tk.Button(text="Save Scene", command=detail_view_update)
+    saveButton.grid(row=3, column=0, padx=10, pady=10)
+
+    loadButton = tk.Button(text="Load Scene", command=load_save)
+    loadButton.grid(row=3, column=1, padx=10, pady=10)
 
     gravity_slider.set(Kg.value)
     timescale_slider.set(timescale.value)
@@ -534,9 +626,18 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
     win.mainloop()
 
 if __name__ == "__main__":
+    default_scene = "saves/springs.json"
+
+    # Encode the default scene string to bytes
+    encoded_default_scene = default_scene.encode()
+
+    # Create a shared array to store the encoded string
+    savefile = mp.Array('c', encoded_default_scene)
+
     reset_event = mp.Value('b', False)
-    detail_view = mp.Value('f', False)
+    detail_view = mp.Value('b', False)
     spawn_event = mp.Value('b', False)
+    loadnew = mp.Value('b', False)
     timescale = mp.Value('f', 1)
     static = mp.Value('b', False)
     reset_objs_event = mp.Value('b', False)
@@ -544,7 +645,7 @@ if __name__ == "__main__":
     scale = mp.Value('f', 100)
     elasticity = mp.Value('f', 0.7)
     roughness = mp.Value('f', 0.2)
-    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view))
-    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view))
+    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view,savefile,loadnew))
+    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view,savefile,loadnew))
     engine_process.start()
     ui_process.start()

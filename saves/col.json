@@ -1,0 +1,25 @@
+{
+    "rigidbodies":{
+        "rb-0":{
+            "x":-100,
+            "y":0,
+            "scale":50,
+            "roughness":0.1,
+            "elasticity":0.7,
+            "static":"False",
+            "collidable":"True"
+        },
+        "rb-1":{
+            "x":100,
+            "y":0,
+            "scale":25,
+            "roughness":0.1,
+            "elasticity":0.7,
+            "static":"False",
+            "collidable":"True"
+        }
+    },
+    "springs":{
+        
+    }
+}
