@@ -7,7 +7,7 @@ import math, os, json
 
 pygame.init()
 
-def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale, detail_view, savefile,loadnew):
+def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, reset_objs_event, static, timescale, detail_view, savefile,loadnew,spr_stiff,spr_len):
     win = pygame.display.set_mode([750,750], pygame.RESIZABLE)
     pygame.display.set_caption("Physics Engine Viewport")
 
@@ -365,13 +365,13 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
         # Spring Add Handling
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_s] and not lastFrameKeys[pygame.K_s]:
+        if keys[pygame.K_s] and not lastFrameKeys[pygame.K_s]: # Create a new spring in runtime
             obj1 = [obj for obj in scene_objects if obj.is_selected]
             obj2 = [obj for obj in scene_objects if obj.is_selected_secondary]
 
             if len(obj1) > 0 and len(obj2) > 0:
-                scene_springs.append(spring(obj1[0], obj2[0], 20+(obj1[0].scale/2), 0.1))
-                scene_springs.append(spring(obj2[0], obj1[0], 20+(obj2[0].scale/2), 0.1))
+                scene_springs.append(spring(obj1[0], obj2[0], spr_len.value+(obj1[0].scale/2), spr_stiff.value))
+                scene_springs.append(spring(obj2[0], obj1[0], spr_len.value+(obj2[0].scale/2), spr_stiff.value))
             else:
                 print("Error: No two objects selected")
         if keys[pygame.K_e] and not lastFrameKeys[pygame.K_e]:
@@ -493,7 +493,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
 
     pygame.quit()
 
-def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale, detail_view,savefile,loadnew):
+def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale, detail_view,savefile,loadnew,spr_stiff,spr_len):
     def reset():
         reset_event.value = True
     
@@ -527,9 +527,11 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
         else:
             detail_view.value = False
 
+    # JSON scene loading system
     def load_save():
         loadwin = tk.Tk()
-        loadwin.title("Load Save")
+        loadwin.title("Load Scene")
+        loadwin.geometry("500x125")
         selected_file = tk.StringVar()
         dropdown_menu = ttk.OptionMenu(loadwin, selected_file)
         def populate_dropdown():
@@ -547,7 +549,6 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
         def set_file():
             savefile.value = f'saves/{selected_file.get()}'.encode()
             loadnew.value = True
-
 
         # Populate the dropdown menu
         populate_dropdown()
@@ -569,9 +570,83 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
         # Run the Tkinter event loop
         loadwin.mainloop()
 
+    # Object Settings window
+
+    def object_settings():
+        objwin = tk.Tk()
+        objwin.title("Object Settings")
+
+        objwin.geometry("500x125")
+
+        scale_label = tk.Label(objwin, text="Object Scale:")
+        scale_label.grid(row=0,column=0, padx=10)
+
+        scale_slider = tk.Scale(objwin, from_=5, to=200, orient="horizontal", command=on_scale_change)
+        scale_slider.grid(row=1,column=0, padx=10, pady=10)
+
+        elasticity_label = tk.Label(objwin, text="Object Elasticity:")
+        elasticity_label.grid(row=0,column=1, padx=10)
+
+        elasticity_slider = tk.Scale(objwin, from_=0, to=2, orient="horizontal", command=on_elasticity_change, resolution=0.1)
+        elasticity_slider.grid(row=1,column=1, padx=10, pady=10)
+
+        roughness_label = tk.Label(objwin, text="Object Roughness:")
+        roughness_label.grid(row=0,column=2, padx=10)
+
+        roughness_slider = tk.Scale(objwin, from_=0, to=1, orient="horizontal", command=on_roughness_change, resolution=0.1)
+        roughness_slider.grid(row=1,column=2, padx=10, pady=10)
+
+        staticButton = tk.Button(objwin, text="Toggle Frozen", command=set_static)
+        staticButton.grid(row=2, column=0, padx=10, pady=10)
+
+        spawnButton = tk.Button(objwin, text="Spawn Object", command=spawn)
+        spawnButton.grid(row=2, column=1, padx=10, pady=10)
+
+        delButton = tk.Button(objwin, text="Remove All Objects", command=removeall)
+        delButton.grid(row=2, column=2, padx=10, pady=10)
+
+        scale_slider.set(scale.value)
+        elasticity_slider.set(elasticity.value)
+        roughness_slider.set(roughness.value)
+
+
+        objwin.mainloop()
+
+    def spring_settings():
+
+        def change_stiff(val):
+            spr_stiff.value = float(val)
+
+        def change_len(val):
+            spr_len.value = float(val)
+
+        springwin = tk.Tk()
+        springwin.title("Spring Settings")
+
+        springwin.geometry("500x125")
+
+        spring_len_label = tk.Label(springwin, text="Length:")
+        spring_len_label.grid(row=0,column=0, padx=10)
+
+        spring_len_slider = tk.Scale(springwin, from_=20, to=100, orient="horizontal", command=change_len, resolution=1)
+        spring_len_slider.grid(row=1,column=0, padx=10, pady=10)
+
+        spring_stiffness_label = tk.Label(springwin, text="Stiffness:")
+        spring_stiffness_label.grid(row=0,column=1, padx=10)
+
+        spring_stiffness_slider = tk.Scale(springwin, from_=0, to=10, orient="horizontal", command=change_stiff, resolution=0.1)
+        spring_stiffness_slider.grid(row=1,column=1, padx=10, pady=10)
+
+        spring_len_slider.set(spr_len.value)
+        spring_stiffness_slider.set(spr_stiff.value)
+        
+        springwin.mainloop()
+
     win = tk.Tk()
     win.title("Physics Engine Settings")
-    #win.geometry("250x500")
+    win.geometry("500x175")
+
+    # World Settings
 
     gravity_label = tk.Label(text="World Gravity:")
     gravity_label.grid(row=0,column=0, padx=10)
@@ -585,50 +660,23 @@ def settings_ui(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs
     timescale_slider = tk.Scale(win, from_=0, to=10, orient="horizontal", command=on_timescale_change, resolution=0.1)
     timescale_slider.grid(row=1,column=1, padx=10, pady=10)
 
-    scale_label = tk.Label(text="Object Scale:")
-    scale_label.grid(row=0,column=2, padx=10)
-
-    scale_slider = tk.Scale(win, from_=5, to=200, orient="horizontal", command=on_scale_change)
-    scale_slider.grid(row=1,column=2, padx=10, pady=10)
-
-    elasticity_label = tk.Label(text="Object Elasticity:")
-    elasticity_label.grid(row=0,column=3, padx=10)
-
-    elasticity_slider = tk.Scale(win, from_=0, to=2, orient="horizontal", command=on_elasticity_change, resolution=0.1)
-    elasticity_slider.grid(row=1,column=3, padx=10, pady=10)
-
-    roughness_label = tk.Label(text="Object Roughness:")
-    roughness_label.grid(row=0,column=4, padx=10)
-
-    roughness_slider = tk.Scale(win, from_=0, to=1, orient="horizontal", command=on_roughness_change, resolution=0.1)
-    roughness_slider.grid(row=1,column=4, padx=10, pady=10)
-
-    staticButton = tk.Button(text="Toggle Frozen", command=set_static)
-    staticButton.grid(row=2, column=0, padx=10, pady=10)
-
-    spawnButton = tk.Button(text="Spawn Object", command=spawn)
-    spawnButton.grid(row=2, column=1, padx=10, pady=10)
-
-    delButton = tk.Button(text="Remove All Objects", command=removeall)
-    delButton.grid(row=2, column=2, padx=10, pady=10)
-
     resetButton = tk.Button(text="Reset", command=reset)
-    resetButton.grid(row=2, column=3, padx=10, pady=10)
+    resetButton.grid(row=2, column=0, padx=10, pady=10)
 
     detailButton = tk.Button(text="Toggle Detail View", command=detail_view_update)
-    detailButton.grid(row=2, column=4, padx=10, pady=10)
-
-    saveButton = tk.Button(text="Save Scene", command=detail_view_update)
-    saveButton.grid(row=3, column=0, padx=10, pady=10)
+    detailButton.grid(row=2, column=1, padx=10, pady=10)
 
     loadButton = tk.Button(text="Load Scene", command=load_save)
-    loadButton.grid(row=3, column=1, padx=10, pady=10)
+    loadButton.grid(row=2, column=2, padx=10, pady=10)
+
+    loadButton = tk.Button(text="Object Settings", command=object_settings)
+    loadButton.grid(row=2, column=3, padx=10, pady=10)
+
+    loadButton = tk.Button(text="Spring Settings", command=spring_settings)
+    loadButton.grid(row=3, column=0, padx=10, pady=10)
 
     gravity_slider.set(Kg.value)
     timescale_slider.set(timescale.value)
-    scale_slider.set(scale.value)
-    elasticity_slider.set(elasticity.value)
-    roughness_slider.set(roughness.value)
 
 
     win.mainloop()
@@ -647,13 +695,15 @@ if __name__ == "__main__":
     spawn_event = mp.Value('b', False)
     loadnew = mp.Value('b', False)
     timescale = mp.Value('f', 1)
+    spr_stiff = mp.Value('f', 0.1)
+    spr_len = mp.Value('f', 60)
     static = mp.Value('b', False)
     reset_objs_event = mp.Value('b', False)
     Kg = mp.Value('f', 981)
     scale = mp.Value('f', 100)
     elasticity = mp.Value('f', 0.7)
     roughness = mp.Value('f', 0.2)
-    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view,savefile,loadnew))
-    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view,savefile,loadnew))
+    engine_process = mp.Process(target=physics_engine, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view,savefile,loadnew,spr_stiff,spr_len))
+    ui_process = mp.Process(target=settings_ui, args=(reset_event,Kg,scale,elasticity,roughness,spawn_event,reset_objs_event,static,timescale,detail_view,savefile,loadnew,spr_stiff,spr_len))
     engine_process.start()
     ui_process.start()
