@@ -44,7 +44,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             self.roughness = roughness
             self.static = False
 
-        def frame(self, timer, objs):
+        def frame(self, timer, objs, col):
 
             if self.static:
                 self.color = (0,153,255)
@@ -107,60 +107,60 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 if (abs(self.velocity[1]) < 5):
                     self.velocity[1] = 0
 
-            
-            for obj in objs:
-                thisUpperBound = self.position[1] + self.scale/2
-                thisLowerBound = self.position[1] - self.scale/2
-                thisRightBound = self.position[0] + self.scale/2
-                thisLeftBound = self.position[0] - self.scale/2
+            if not col:
+                for obj in objs:
+                    thisUpperBound = self.position[1] + self.scale/2
+                    thisLowerBound = self.position[1] - self.scale/2
+                    thisRightBound = self.position[0] + self.scale/2
+                    thisLeftBound = self.position[0] - self.scale/2
 
-                otherUpperBound = obj.position[1] + obj.scale/2
-                otherLowerBound = obj.position[1] - obj.scale/2
-                otherRightBound = obj.position[0] + obj.scale/2
-                otherLeftBound = obj.position[0] - obj.scale/2
-
-
-                yTopCollision = thisUpperBound > otherLowerBound and thisUpperBound < otherUpperBound
-                yBottomCollision = thisLowerBound > otherLowerBound and thisLowerBound < otherUpperBound
-
-                yCenterCollision = self.position[1] > otherLowerBound-self.scale/2+1 and self.position[1] < otherUpperBound+self.scale/2-1
+                    otherUpperBound = obj.position[1] + obj.scale/2
+                    otherLowerBound = obj.position[1] - obj.scale/2
+                    otherRightBound = obj.position[0] + obj.scale/2
+                    otherLeftBound = obj.position[0] - obj.scale/2
 
 
-                xLeftCollsion = thisLeftBound > otherLeftBound and thisLeftBound < otherRightBound
-                xRightCollision = thisRightBound > otherLeftBound and thisRightBound < otherRightBound
+                    yTopCollision = thisUpperBound > otherLowerBound and thisUpperBound < otherUpperBound
+                    yBottomCollision = thisLowerBound > otherLowerBound and thisLowerBound < otherUpperBound
 
-                xCenterCollision = self.position[0] > otherLeftBound - self.scale/2+1 and self.position[0] < otherRightBound + self.scale/2-1
+                    yCenterCollision = self.position[1] > otherLowerBound-self.scale/2+1 and self.position[1] < otherUpperBound+self.scale/2-1
 
-                if xCenterCollision:
-                    if yTopCollision:
-                        transferredEnergy = self.scale/obj.scale * self.velocity[1] * (1-self.elasticity)
-                        obj.velocity[1] += transferredEnergy
-                        self.velocity[1] *= -self.elasticity
-                        self.position[1] = obj.position[1] - obj.scale/2 - self.scale/2
-                        self.velocity[0] -= self.velocity[0]*self.roughness
-                        if (abs(self.velocity[1]) < 15):
-                            self.velocity[1] = 0
-                    if yBottomCollision:
-                        transferredEnergy = self.scale/obj.scale * self.velocity[1] * (1-self.elasticity)
-                        obj.velocity[1] += transferredEnergy
-                        self.velocity[1] *= -self.elasticity
-                        self.position[1] = obj.position[1] + obj.scale/2 + self.scale/2
-                        self.velocity[0] -= self.velocity[0]*self.roughness
-                        if (abs(self.velocity[1]) < 50):
-                            self.velocity[1] = 0
-                if yCenterCollision:
-                    if xLeftCollsion:
-                        transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
-                        obj.velocity[0] += transferredEnergy
-                        self.velocity[0] *= -self.elasticity
 
-                        self.position[0] = obj.position[0] + obj.scale/2 + self.scale/2
-                    if xRightCollision:
-                        transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
-                        obj.velocity[0] += transferredEnergy
-                        self.velocity[0] *= -self.elasticity
+                    xLeftCollsion = thisLeftBound > otherLeftBound and thisLeftBound < otherRightBound
+                    xRightCollision = thisRightBound > otherLeftBound and thisRightBound < otherRightBound
 
-                        self.position[0] = obj.position[0] - obj.scale/2 - self.scale/2
+                    xCenterCollision = self.position[0] > otherLeftBound - self.scale/2+1 and self.position[0] < otherRightBound + self.scale/2-1
+
+                    if xCenterCollision:
+                        if yTopCollision:
+                            transferredEnergy = self.scale/obj.scale * self.velocity[1] * (1-self.elasticity)
+                            obj.velocity[1] += transferredEnergy
+                            self.velocity[1] *= -self.elasticity
+                            self.position[1] = obj.position[1] - obj.scale/2 - self.scale/2
+                            self.velocity[0] -= self.velocity[0]*self.roughness
+                            if (abs(self.velocity[1]) < 15):
+                                self.velocity[1] = 0
+                        if yBottomCollision:
+                            transferredEnergy = self.scale/obj.scale * self.velocity[1] * (1-self.elasticity)
+                            obj.velocity[1] += transferredEnergy
+                            self.velocity[1] *= -self.elasticity
+                            self.position[1] = obj.position[1] + obj.scale/2 + self.scale/2
+                            self.velocity[0] -= self.velocity[0]*self.roughness
+                            if (abs(self.velocity[1]) < 50):
+                                self.velocity[1] = 0
+                    if yCenterCollision:
+                        if xLeftCollsion:
+                            transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
+                            obj.velocity[0] += transferredEnergy
+                            self.velocity[0] *= -self.elasticity
+
+                            self.position[0] = obj.position[0] + obj.scale/2 + self.scale/2
+                        if xRightCollision:
+                            transferredEnergy = self.scale/obj.scale * self.velocity[0] * (1-self.elasticity)
+                            obj.velocity[0] += transferredEnergy
+                            self.velocity[0] *= -self.elasticity
+
+                            self.position[0] = obj.position[0] - obj.scale/2 - self.scale/2
 
             # Mouse grabbing
             if pygame.mouse.get_pressed()[0]:
@@ -347,7 +347,8 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             for no_col in no_collisions:
                 if (no_col != obj):
                     other_objs.remove(no_col)
-            obj.frame(timer, other_objs)
+            collisions = obj in no_collisions
+            obj.frame(timer, other_objs, collisions)
         for spring_x in scene_springs:
             spring_x.frame(timer)
 
@@ -439,6 +440,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             elasticities = []
             scene_objects = []
             scene_springs = []
+            no_collisions = []
             reset_objs_event.value = False
 
         if static.value == True:
@@ -459,6 +461,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             elasticities = []
             scene_objects = []
             scene_springs = []
+            no_collisions = []
             decoded_scene = savefile.value.decode()
             readSave(decoded_scene)
             loadnew.value = False
