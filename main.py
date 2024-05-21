@@ -43,6 +43,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             self.grabbing = False
             self.roughness = roughness
             self.static = False
+            self.airRes = 0.999
 
         def frame(self, timer, objs, col):
 
@@ -76,15 +77,15 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                 self.velocity[1] += mouseWind[1]
                 self.velocity[0] += mouseWind[0]
 
-            if self.velocity[1] < self.terminal_vel:
+            if self.velocity[1] < self.terminal_vel and not self.grabbing:
                 self.velocity[1] += self.g * timer.deltatime
 
             if (not self.static):
                 self.position[0] += self.velocity[0] * timer.deltatime * timescale.value
                 self.position[1] += self.velocity[1] * timer.deltatime * timescale.value
             
-            self.velocity[0] *= 0.999
-            self.velocity[1] *= 0.999
+            self.velocity[0] *= self.airRes
+            self.velocity[1] *= self.airRes
 
             # Frame Collisions
             if self.position[0] > self.win.get_size()[0] - self.scale / 2:
@@ -172,9 +173,12 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
                     self.grabbing = True
 
                 if self.grabbing:
-                    xvel = (mousex - self.position[0]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2)) / 10
-                    yvel = (mousey - self.position[1]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2)) / 10
-                    self.velocity = [xvel/self.scale, yvel/self.scale]
+                    dragdiv = 1000
+                    xvel = (mousex - self.position[0]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2))
+                    yvel = (mousey - self.position[1]) * math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2))
+                    self.velocity[0] += xvel/self.scale / dragdiv
+                    self.velocity[1] += yvel/self.scale / dragdiv
+                    self.airRes = 0.999 - 0.999/(math.sqrt(math.pow(mousex - self.position[0], 2) + math.pow(mousey - self.position[1], 2))*10)
 
                 self.lastFrameMouseDown = True
             elif pygame.mouse.get_pressed()[2]:
@@ -192,6 +196,7 @@ def physics_engine(reset_event, Kg, scale, elasticity, roughness, spawn_event, r
             else:
                 mousex, mousey = pygame.mouse.get_pos()
                 self.grabbing = False
+                self.airRes = 0.999
 
                 self.lastFrameMouseDown = False
 

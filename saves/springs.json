@@ -23,13 +23,13 @@
         "sp-0":{
             "obj1":0,
             "obj2":1,
-            "length": 30,
+            "length": 60,
             "stiffness": 0.1
         },
         "sp-1":{
             "obj1":1,
             "obj2":0,
-            "length": 30,
+            "length": 60,
             "stiffness": 0.1
         }
     }
